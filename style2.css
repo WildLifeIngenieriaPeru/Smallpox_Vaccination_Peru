@@ -215,7 +215,7 @@ iframe	{width: 70%;
 
 .interactive_map 	{display: block;
 					margin: 0 auto;
-					height: 100vh;
+					height: 90vh;
 					padding: 20px;
 					overflow-x: visible;
 					}
