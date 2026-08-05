@@ -133,7 +133,7 @@ article	{text-align: justify;
 
 .text article 	{flex: 1;
 				box-sizing: border-box;
-				#border: 1px solid red;
+				/*border: 1px solid red;*/
 				}
 
 /*You can set the margin property to auto to horizontally center the element within its container.*/
