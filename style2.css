@@ -210,6 +210,7 @@ iframe	{width: 70%;
 		height: 100vh;
 		padding-bottom: 25px;
 		overflow-x: visible;
+		display: block;
 		}
 
 .interactive_map 	{display: block;
