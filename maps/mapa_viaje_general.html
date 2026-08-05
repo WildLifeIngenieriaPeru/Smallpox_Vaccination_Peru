@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Mapa del viaje - demo</title>
+
+<!-- importa Leaflet -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
+
+<!-- html, body: espacio que ocupa el mapa + fuente usada -->
+<!-- #map: ubica el borde inferior (80px) donde van los botones atrás/adelante -->
+<!-- #controls: estilo del espacio donde van los botones atrás/adelante -->
+<!-- button & button:disabled: aspecto de los botones habilitados y desabilitados -->
+<!-- leyenda: estilo de la leyenda :DDD -->
+<style>
+  
+  html,body {
+    margin:0;
+    padding:0;
+    height:100%;
+    font-family:Tahoma, sans-serif;}
+
+  #map {position:absolute;
+    top:0;
+    bottom:80px;
+    left:0;
+    right:0;}
+  
+  #controls {position:absolute;
+    bottom:0;
+    left:0;
+    right:0;
+    height:80px;
+    background:#1f2430;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:0 16px;
+    box-sizing:border-box;}
+
+  button {background:#3b82f6;
+    border:none;
+    color:#fff;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:15px;}
+
+  button:disabled {background:#555;
+    cursor:not-allowed;}
+
+  #step-info {font-size:14px;
+    text-align:center;
+    min-width:220px;}
+
+  .popup-content {max-width:250px;}
+  
+  .popup-content img {width:100%;
+    border-radius:6px;
+    margin-top:6px;}
+
+  .popup-content a {color:#3b82f6;}
+  
+  .leyenda {position:absolute;
+    top:10px;
+    right:10px;
+    background:#fff;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:13px;
+    box-shadow:0 1px 4px rgba(0,0,0,.3);
+    z-index:1000;}
+
+  .leyenda span {display:inline-block;
+    width:15px;
+    height:10px;
+    border-radius:20%;
+    margin-right:6px;}
+
+  .leyenda b {margin-bottom: 15px}
+
+</style>
+</head>
+
+<body>
+
+<!-- div vacío donde va ir el mapa -->
+<div id="map"></div>
+
+<!-- div vacío donde va ir la leyenda -->
+<div class="leyenda" id="leyenda"></div>
+
+<!-- div vacío donde va ir la barra inferior con los botones (&larr es -> y &rarr es <-) -->
+<div id="controls">
+  <button id="prevBtn">&larr; Previous</button>
+  <div id="step-info">Stop 0</div>
+  <button id="nextBtn">Next &rarr;</button>
+</div>
+
+
+<!-- javascript con el funcionamiento del mapa -->
+<script>
+
+// Crea el mapa dentro del div#map, centrado en [lat, lng] con nivel de zoom 7
+const map = L.map('map').setView([41.8, 1.5], 7);
+
+// Agrega el mapa base sacado de OpenStreetMap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+
+// creación de variables que van a tomar su contenido del json
+let stops = [];           // paradas en la ruta (se llena con data.stops) con TODA su información (id, grupo, orden, coord, etc.)
+let colores = {};         // dicc colores por grupo (se llena con data.colores)
+let tramosDef = [];       // pares que conectan paradas [de,a] (se llena con data.tramos)
+let curvaturas = [];      // curvaturas calculadas para cada tramo
+let byId = {};            // dicc con los id unicos de las paradas
+let ordenAparicion = [];  // copia de stops que se ordena cuando se carga el archivo json de acuerdo a su campo orden
+let maxStep = 0;          // últ paso posible
+let step = 0;             // paso actual; si es 0 solo se ve el origen
+
+const markers = {};       // dicc donde se guardan los marcadores dibujados por id
+const lines = [];         // aquí se guardan las líneas dibujadas
+
+
+// ------------- función HTML para los pop-up: título en negrita, texto, foto, link -------------
+function popupHTML(s){
+  let html = `<div class="popup-content"><b>${s.titulo}</b><br><b>${s.llegada}</b><br><b>${s.salida}</b><br>${s.texto_arrive}<br>${s.texto_depart}`;
+  s.fotos.forEach(f=> html += `<img src="${f}">`);
+  s.links.forEach(l=> html += `<br><a href="${l.url}" target="_blank">${l.label}</a>`);
+  html += `</div>`;
+  return html;
+}
+// ------------- fin de la función HTML para los pop-up -----------------------------------------
+
+
+
+// ------------- función medium size (lol) para generar curvas en lugar de líneas ---------------
+// función que genera una lista de puntos que dibujan una curva (Bézier cuadrática) 
+// entre p1 (punto 1) y p2 (punto 2), los cuales se obtienen en base a la lat y long de cada coordenada.
+// curvature: qué tan "arqueada" es la curva (0 = línea recta)
+function curvedPoints(p1, p2, curvature = 0.2){
+  const [lat1,lng1] = p1, [lat2,lng2] = p2;
+
+  // calculo del punto medio entre origen y destino
+  const midLat = (lat1+lat2)/2;
+  const midLng = (lng1+lng2)/2;
+
+  // vector perpendicular a la línea p1->p2, usado para jalar el punto medio de la linea recta y generar la curva (como en un arco)
+  const dx = lng2-lng1, dy = lat2-lat1;
+  // Desplaza el punto medio en latitud
+  const offsetLat = midLat + (-dx)*curvature;
+  // Desplaza el punto medio en longitud
+  const offsetLng = midLng + (dy)*curvature;
+
+  // magia matemática que no entiendo :DDDD
+  // curva en 30 pasos usando la fórmula de Bézier cuadrática:
+  // B(t) = (1-t)^2 * P1 + 2(1-t)t * control + t^2 * P2
+  const points = [];    // puntos de la curva
+  const steps = 30;     // cantidad de segmentos que forman la curva (más = más suave)
+  for(let i=0;i<=steps;i++){
+    const t = i/steps;
+    const lat = (1-t)*(1-t)*lat1 + 2*(1-t)*t*offsetLat + t*t*lat2;
+    const lng = (1-t)*(1-t)*lng1 + 2*(1-t)*t*offsetLng + t*t*lng2;
+    points.push([lat,lng]);
+  }
+  return points;
+}
+// ------------- fin de función medium size (lol) para generar curvas en lugar de líneas --------
+
+
+
+// ------------- función para evitar superposiciones de curvas ----------------------------------
+// Si varios tramos conectan exactamente el mismo par de coordenadas, se les reparten curvaturas distintas
+function calcularCurvaturas(){
+  // curvatura si NO se comparten coordenadas, "de base"
+  const curvaturaBase = 0.2;
+  // caso contrario, la curvatura se aleja 0.15 (mayor valor, más separación)
+  const separacion = 0.2;
+
+  // dicc {par de coordenadas : lista de tramos de conectan}
+  const gruposPorPar = {};
+  // recorre los tramos, guardando su indice
+  tramosDef.forEach(([de,a], i)=>{
+    // obtiene las coordenadas de origen y destino del tramo
+    const c1 = byId[de].coords, c2 = byId[a].coords;
+    //  ??
+    const key = [c1.join(','), c2.join(',')].sort().join('|');
+    if(!gruposPorPar[key]) gruposPorPar[key] = [];
+    gruposPorPar[key].push(i);
+  });
+
+  // array de curvaturas vacío
+  curvaturas = new Array(tramosDef.length);
+
+  // recorre la lista de indices que comparten el mismo par de coord (gruposPorPar)
+  Object.values(gruposPorPar).forEach(indices=>{
+    // cuenta cuántos tramos hay en ese grupo
+    const n = indices.length;
+    // guarda sus posiciones
+    indices.forEach((idxTramo, posEnGrupo)=>{
+
+      // ??
+      const offset = (posEnGrupo - (n-1)/2) * separacion;
+      
+      // guarda la curvatura final del tramo
+      curvaturas[idxTramo] = curvaturaBase + offset;
+    });
+  });
+}
+// ------------- fin de la función para evitar curvas superpuestas ------------------------------
+
+
+
+// ------------- función GIGANTE que va a dibujar el mapa de acuerdo con el número de paso ------
+function render(){
+  // cada vez que se presiona un botón, se borra todo lo que había antes, para que no hayan problemas de que se sobreescriban puntos cuando se retrocede o que se muestre algo posterior antes de llegar ahí
+  Object.values(markers).forEach(m=>map.removeLayer(m));  // quita cada marcador del mapa
+  lines.forEach(l=>map.removeLayer(l));                   // quita cada línea del mapa
+  for(const k in markers) delete markers[k];              // vacía el dicc donde se guardan los marcadores dibujados por id
+  lines.length = 0;                                       // vacía la variable que guardaba las líneas ya dibujadas
+
+  // visibles almacena las paradas visibles en función al número de paso
+  const visibles = ordenAparicion.slice(0, step+1);
+  
+  // Crea un conjunto (set) solo con los ids de esas paradas, para consultar rápido después (parte con tramosDef.forEach)
+  const visibleIds = new Set(visibles.map(s=>s.id));
+
+  // por cada parada visible, se crea un punto sobre sus coord
+  visibles.forEach(s=>{
+    const m = L.circleMarker(s.coords, {radius:8,
+                                        color:"#fff",
+                                        weight:2,
+                                        fillColor: colores[s.grupo]||"#333",
+                                        fillOpacity:1
+    
+    // coloca el punto en el mapa y lo asocia con su pop up
+    }).addTo(map).bindPopup(popupHTML(s));
+    
+    // guarda el punto en markers, de acuerdo a su id, para poder borrarlo después
+    markers[s.id] = m;
+  });
+
+  // por cada tramo con ambos extremos visibles, se va a dibujar una curva
+  tramosDef.forEach(([de,a], i)=>{
+    if(visibleIds.has(de) && visibleIds.has(a)){
+      const s1=byId[de], s2=byId[a];
+      
+      // cálculo de los puntos de la curva entre ambas coord
+      const puntosCurva = curvedPoints(s1.coords, s2.coords, curvaturas[i]);
+      const color = colores[s2.grupo]||"#333";
+      
+      // dibuja la curva con el color del grupo de destino
+      const line = L.polyline(puntosCurva, {color, weight:2.5}).addTo(map);
+      // guarda la línea en lines para poder borrarla después
+      lines.push(line);
+      const decorador = L.polylineDecorator(line, {
+        patterns: [{
+          offset: '100%',                    // dónde va la punta: 100% = en el final/destino
+          repeat: 0,                        // (solo una punta)
+          symbol: L.Symbol.arrowHead({
+            pixelSize: 10,                  // tamaño de la flecha en píxeles
+            pathOptions: { color, fillOpacity: 1, weight: 0 } // mismo color que la línea
+          })
+        }]
+      }).addTo(map);
+      lines.push(decorador); // se guarda junto con las líneas, para que se borre en el próximo render()
+    }
+  });
+
+  // actualiza el texto de la barra inferior de acuerdo con la última parada visible
+  const last = visibles[visibles.length-1];
+  document.getElementById('step-info').textContent =
+    `Stop ${step} of ${maxStep} — ${last.titulo}`;
+  
+  //desabilitación de botones si se está en la primera parada (anterior > prevBtn) o en la última (siguiente > nextBtn)
+  document.getElementById('prevBtn').disabled = step===0;
+  document.getElementById('nextBtn').disabled = step===maxStep;
+
+  // Si la parada trae un "zoom" propio en el JSON, usamos ese; si no, mantenemos el zoom actual del mapa
+  if(step>0){
+    const zoomObjetivo = (last.zoom !== undefined) ? last.zoom : map.getZoom();
+    map.flyTo(last.coords, zoomObjetivo); // flyTo anima tanto la posición como el zoom a la vez
+  }
+}
+// ------------- fin de la función GIGANTE que va a dibujar el mapa -----------------------------
+
+
+
+// ------------- función petit para rellenar la leyenda -----------------------------------------
+function buildLeyenda(){
+  // busca el div de leyenda en el html y lo completa
+  const cont = document.getElementById('leyenda');
+  cont.innerHTML = "<b>Groups</b><br>" + Object.entries(colores)
+    .map(([g,c])=>`<span style="background:${c}"></span>${g}`).join("<br>");
+}
+// ------------- fin de la función para rellenar la leyenda -------------------------------------
+
+
+
+// ------------- BOTONES ------------------------------------------------------------------------
+// botón siguiente!!! avanza y (re)dibuja, salvo en el paso final 
+document.getElementById('nextBtn').onclick = ()=>{ if(step<maxStep){ step++; render(); } };
+// botón anterior!!! retrocede y (re)dibuja, salvo en el paso final 
+document.getElementById('prevBtn').onclick = ()=>{ if(step>0){ step--; render(); } };
+// ------------- FIN DE BOTONES -----------------------------------------------------------------
+
+
+
+// ------------- AQUÍ POR FIN SE USA TODA LA WEA ANTERIOR ---------------------------------------
+// se importa el json con los datos para que la cosa funcione
+fetch('mapa_general.json')
+  .then(res => {
+    // bota error si el archivo no está en la misma carpeta o si no llega la respuesta del servidor
+    if(!res.ok) throw new Error('No se pudo cargar viaje.json (status ' + res.status + ')');
+    // si todo bien, se convierte el json en javascript (TT_TT)
+    return res.json();
+  })
+  // se empiezan a llenar los objetos que están al principio del java (stops, colores, etc...)
+  .then(data => {
+    stops = data.stops;
+    colores = data.colores;
+    tramosDef = data.tramos;
+
+    // construcción de un dicc id para facilitar búsquedas
+    byId = Object.fromEntries(stops.map(s=>[s.id,s]));
+    // se ordenan las paradas de acuerdo al campo orden y se guardan en ordenAparicion 
+    ordenAparicion = stops.slice().sort((a,b)=>a.orden-b.orden);
+    // se calcula el último paso posible
+    maxStep = ordenAparicion.length - 1;
+    calcularCurvaturas();
+
+    // se construye la leyenda
+    buildLeyenda();
+    // se dibuja el mapa !!!!!
+    render();
+  })
+  // se muestra un mensaje de error en la barra inferior si es que algo falla
+  .catch(err => {
+    document.getElementById('step-info').textContent = 'Error cargando datos: ' + err.message;
+    // se muestra el error en la consola (se abre con F12)
+    // no se ve si no se abre, es para que yo pueda ubicar el error más fácilmente
+    console.error(err);
+  });
+// ------------- FIN: MAPA CREADO, SABINA FELIZ (Y CALVA) ---------------------------------------
+
+</script>
+</body>
+</html>
