@@ -208,7 +208,7 @@ button	{font-family: Giorgia, serif;
 
 iframe	{width: 70%;
 		height: 100vh;
-		padding-bottom: 25px;
+		padding: 20px;
 		overflow-x: visible;
 		display: block;
 		}
