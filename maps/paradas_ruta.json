@@ -100,7 +100,7 @@
     "fotos":[], "links":[]},
 
     {"id":"c3", "grupo":"Join Expedition: Group led by Francisco Pastor", "grupo_padre":"Joint expedition", "orden":3, "coords":[10.60,-66.93],
-    "titulo":"Joint Expedition: La Guaira -  | Depart: May 8th 1804",
+    "titulo":"Joint Expedition: La Guaira",
     "llegada":"Arrive: May 6th 1804 (?)",
     "salida":"Depart: May 8th 1804",
     "texto_arrive":"«[La Real Expedición de la Vacuna] Estaba en esta población desde  el 6 de mayo de 1804 que había llegado procedente de Caracas» Ricardo Archila 1969, p. 25.",

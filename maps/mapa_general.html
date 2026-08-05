@@ -211,13 +211,13 @@
       <h2 id="titulo">Selecciona una parada</h2>
       <!-- texto_arrive -->
       <div class="info-item" id="texto-arrive" style="display:none;">
-        <strong>Llegada:</strong>
+        <strong>About the arrival:</strong>
         <p></p>
       </div>
 
       <!-- texto_depart -->
       <div class="info-item" id="texto-depart" style="display:none;">
-        <strong>Salida:</strong>
+        <strong>About the departure:</strong>
         <p></p>
       </div>
 
@@ -516,7 +516,7 @@ document.getElementById('prevBtn').onclick = ()=>{ if(step>0){ step--; render();
 
 // ------------- AQUÍ POR FIN SE USA TODA LA WEA ANTERIOR ---------------------------------------
 // se importa el json con los datos para que la cosa funcione
-fetch('mapa_general.json')
+fetch('paradas_ruta.json')
   .then(res => {
     // bota error si el archivo no está en la misma carpeta o si no llega la respuesta del servidor
     if(!res.ok) throw new Error('No se pudo cargar viaje.json (status ' + res.status + ')');
