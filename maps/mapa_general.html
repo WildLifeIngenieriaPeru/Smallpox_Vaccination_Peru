@@ -16,59 +16,84 @@
 <!-- leyenda: estilo de la leyenda :DDD -->
 <style>
   
+  /* Reset y base */
+  * { box-sizing: border-box; }
+
   html,body {
     margin:0;
     padding:0;
     height:100%;
     font-family:Tahoma, sans-serif;}
 
-  #map {position:absolute;
-    top:0;
-    bottom:80px;
-    left:0;
-    right:0;}
-  
-  #controls {position:absolute;
-    bottom:0;
-    left:0;
-    right:0;
-    height:80px;
-    background:#1f2430;
-    color:#fff;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:16px;
-    padding:0 16px;
-    box-sizing:border-box;}
+  /* contenedor GIGANTE: ordena verticalmente mapa + info + botones */
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
 
-  button {background:#3b82f6;
-    border:none;
-    color:#fff;
-    padding:10px 18px;
-    border-radius:8px;
-    cursor:pointer;
-    font-size:15px;}
+  /* fila superior: info + mapa */
+  .row {
+    display: flex;
+    flex: 1;
+    min-height: 0; /* para evitar overflow */
+  }
 
-  button:disabled {background:#555;
-    cursor:not-allowed;}
+  /* Panel derecho con la info */
+  #sidebar {
+    width: 25%; /* ancho del panel de info */
+    background: #fafdff;
+    padding: 16px 16px 20px;
+    overflow-y: auto;
+    border-left: 2px solid #ddd; /* borde separarlo del mapa */
+    order: -1; /* hace que se vea en la derecha */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 
-  #step-info {font-size:14px;
-    text-align:center;
-    min-width:220px;}
+  #sidebar h2 {   /* titulo "bla expedition: bla" */
+    margin: 0 0 4px 0;  /* margen inferior de 4px y 0 en los otros */
+    font-size: 15px;
+    }
 
-  .popup-content {max-width:250px;}
-  
-  .popup-content img {width:100%;
-    border-radius:6px;
-    margin-top:6px;}
+  #sidebar .info-item {  /* margen luego de textos sobre llegada y salida */
+    margin-bottom: 6px;
+  }
 
-  .popup-content a {color:#3b82f6;}
-  
+  #sidebar .info-item strong {
+    display: block;
+    font-weight: 600;  /* qué tan en negrita se ve llegada y salida */
+    color: #1f2430;
+    font-size: 0.9rem;
+  }
+
+  #sidebar .info-item p {
+    margin: 2px 0 0 0;  /* margen superior de 2px y 0 en los otros */
+    font-size: 0.95rem;
+  }
+
+/* style de las fotos que pueda haber en el panel de info */
+  #sidebar .fotos img { 
+    max-width: 100%;
+    border-radius: 6px;
+    margin: 4px 0;
+  }
+
+/* style de los links que pueda haber en el panel de info */
+  #sidebar .links a {
+    display: inline-block;
+    margin-right: 8px;
+    color: #3b82f6;
+    text-decoration: none;
+  }
+
   .leyenda {position:absolute;
     top:10px;
     right:10px;
-    background:#fff;
+    background:#fafdff;
     padding:8px 12px;
     border-radius:8px;
     font-size:13px;
@@ -80,16 +105,131 @@
     height:10px;
     border-radius:20%;
     margin-right:6px;}
-
+  
   .leyenda b {margin-bottom: 15px}
 
+  .leyenda summary {
+  cursor: pointer;       /* mano al pasar el mouse, para que se note que es clickeable */
+  font-weight: bold;
+  outline: none;         /* saca el contorno azul feo al hacer foco */
+  }
+
+  .leyenda details[open] summary {
+    margin-bottom: 6px;    /* separa el título de la lista solo cuando está abierta */
+    }
+
+  .leyenda details {
+    line-height: 1.4; /* controla el espacio entre cada línea de grupo dentro del <details> */
+    }
+  
+  /* Contenedor del mapa */
+  #map-container {
+    flex: 1;
+    position: relative;
+    background: #e5e5e5;
+    }
+
+  #map {position:absolute;
+    top:0;
+    bottom:0px;   /* ocupará todo el contenedor, la barra estará fuera */
+    left:0;
+    right:0;}
+  
+  /* barra inferior */
+  #controls {
+    height:80px;
+    background:#360275;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:0 16px;
+    }
+
+  button {background:#CAA2FC;
+    border:none;
+    color:#22122b;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:15px;}
+
+  button:disabled {
+    background:#ebe1f7;
+    cursor:not-allowed;}
+
+  #step-info {
+    font-size:14px;
+    text-align:center;
+    min-width:220px;
+    }
+
+  .leaflet-popup-content-wrapper {
+    background: #fafdff;
+    }
+  
+  .leaflet-popup-tip {
+    background: #fafdff;
+    }
+
+  .popup-content {
+    max-width:250px;
+    }
+  
+  .popup-content img {width:100%;
+    border-radius:6px;
+    margin-top:6px;
+    }
+
+  .popup-content a {color:#3b82f6;}
+
+
+  /* para que en pantallas chicas no se me vaya al diablo todo */
+  @media (max-width: 700px) {
+    .row { flex-direction: column; }
+    #sidebar { width: 100%; max-height: 40vh; border-left: none; border-bottom: 2px solid #ddd; order: 0; }
+    #map-container { flex: 1; min-height: 60vh; }
+  }
+ 
 </style>
 </head>
 
 <body>
 
-<!-- div vacío donde va ir el mapa -->
-<div id="map"></div>
+<div class="app"> <!-- div GIGANTE pa todo: mapa + info + botones -->
+  
+  <div class="row">  <!-- fila superior: info + mapa -->
+    
+    <div id="map-container">
+      <div id="map"></div> <!-- div vacío donde va ir el mapa -->
+    </div>
+
+    <div id="sidebar">  <!-- Panel derecho con la info -->
+
+      <!-- info sobre las paradas -->
+      <h2 id="titulo">Selecciona una parada</h2>
+      <!-- texto_arrive -->
+      <div class="info-item" id="texto-arrive" style="display:none;">
+        <strong>Llegada:</strong>
+        <p></p>
+      </div>
+
+      <!-- texto_depart -->
+      <div class="info-item" id="texto-depart" style="display:none;">
+        <strong>Salida:</strong>
+        <p></p>
+      </div>
+
+      <!-- Fotos (si las hay) -->
+      <div class="info-item fotos" id="fotos-container" style="display:none;"></div>
+
+      <!-- Links (si los hay) -->
+      <div class="info-item links" id="links-container" style="display:none;"></div>
+
+    </div>
+
+  </div>
 
 <!-- div vacío donde va ir la leyenda -->
 <div class="leyenda" id="leyenda"></div>
@@ -105,8 +245,9 @@
 <!-- javascript con el funcionamiento del mapa -->
 <script>
 
-// Crea el mapa dentro del div#map, centrado en [lat, lng] con nivel de zoom 7
-const map = L.map('map').setView([41.8, 1.5], 7);
+// const map = L.map('map').setView([41.8, 1.5], 7); // anterior código
+// cargar el mapa sin centrarlo (para poder hacerlo responsive en pantallas pequeñas)
+const map = L.map('map'); 
 
 // Agrega el mapa base sacado de OpenStreetMap
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -130,7 +271,7 @@ const lines = [];         // aquí se guardan las líneas dibujadas
 
 // ------------- función HTML para los pop-up: título en negrita, texto, foto, link -------------
 function popupHTML(s){
-  let html = `<div class="popup-content"><b>${s.titulo}</b><br><b>${s.llegada}</b><br><b>${s.salida}</b><br>${s.texto_arrive}<br>${s.texto_depart}`;
+  let html = `<div class="popup-content"><b>${s.titulo}</b><br>${s.llegada}<br>${s.salida}`;
   s.fotos.forEach(f=> html += `<img src="${f}">`);
   s.links.forEach(l=> html += `<br><a href="${l.url}" target="_blank">${l.label}</a>`);
   html += `</div>`;
@@ -138,7 +279,61 @@ function popupHTML(s){
 }
 // ------------- fin de la función HTML para los pop-up -----------------------------------------
 
+// ------------- función para generar la info en un costado -------------------------------------
+function updateSidebar(stopData) {
+  // jalar la información del json
+  const titulo = document.getElementById('titulo');
+  const txtArrive = document.getElementById('texto-arrive');
+  const txtDepart = document.getElementById('texto-depart');
+  const fotosDiv = document.getElementById('fotos-container');
+  const linksDiv = document.getElementById('links-container');
 
+  if (!stopData) {
+    titulo.textContent = 'Selecciona una parada';
+    txtArrive.style.display = 'none';
+    txtDepart.style.display = 'none';
+    fotosDiv.style.display = 'none';
+    linksDiv.style.display = 'none';
+    return;
+  }
+
+  titulo.textContent = stopData.titulo || 'Sin título';
+
+  // texto_arrive
+  if (stopData.texto_arrive && stopData.texto_arrive !== '-') {
+    txtArrive.style.display = 'block';
+    txtArrive.querySelector('p').textContent = stopData.texto_arrive;
+  } else {
+    txtArrive.style.display = 'none';
+  }
+
+  // texto_depart
+  if (stopData.texto_depart && stopData.texto_depart !== '-') {
+    txtDepart.style.display = 'block';
+    txtDepart.querySelector('p').textContent = stopData.texto_depart;
+  } else {
+    txtDepart.style.display = 'none';
+  }
+
+  // Fotos
+  if (stopData.fotos && stopData.fotos.length) {
+    fotosDiv.style.display = 'block';
+    fotosDiv.innerHTML = stopData.fotos.map(f => `<img src="${f}" alt="foto">`).join('');
+  } else {
+    fotosDiv.style.display = 'none';
+  }
+
+  // Links
+  if (stopData.links && stopData.links.length) {
+    linksDiv.style.display = 'block';
+    linksDiv.innerHTML = stopData.links.map(l =>
+      `<a href="${l.url}" target="_blank">${l.label}</a>`
+    ).join(' ');
+  } else {
+    linksDiv.style.display = 'none';
+  }
+}
+// ------------- fin de función para generar la info en un costado ------------------------------
 
 // ------------- función medium size (lol) para generar curvas en lugar de líneas ---------------
 // función que genera una lista de puntos que dibujan una curva (Bézier cuadrática) 
@@ -273,8 +468,12 @@ function render(){
     }
   });
 
-  // actualiza el texto de la barra inferior de acuerdo con la última parada visible
+  // actualiza el panel lateral y el texto de la barra inferior de acuerdo con la última parada visible
   const last = visibles[visibles.length-1];
+  // panel:
+  updateSidebar(last);
+
+  // todo lo demás es barra inferior:
   document.getElementById('step-info').textContent =
     `Stop ${step} of ${maxStep} — ${last.titulo}`;
   
@@ -296,8 +495,11 @@ function render(){
 function buildLeyenda(){
   // busca el div de leyenda en el html y lo completa
   const cont = document.getElementById('leyenda');
-  cont.innerHTML = "<b>Groups</b><br>" + Object.entries(colores)
+  // arma la lista de grupos con su color (el título va en summary)
+  const items = Object.entries(colores)
     .map(([g,c])=>`<span style="background:${c}"></span>${g}`).join("<br>");
+    // <details> = empieza cerrada, para que empiece abierta colocar <details open>
+    cont.innerHTML = `<details><summary>Groups of the Expedition</summary>${items}</details>`;
 }
 // ------------- fin de la función para rellenar la leyenda -------------------------------------
 
@@ -334,6 +536,12 @@ fetch('mapa_general.json')
     // se calcula el último paso posible
     maxStep = ordenAparicion.length - 1;
     calcularCurvaturas();
+
+    // Centrar en el primer punto
+    const primerPunto = ordenAparicion[0];
+    if (primerPunto) {
+      map.setView(primerPunto.coords, 7);
+    }
 
     // se construye la leyenda
     buildLeyenda();

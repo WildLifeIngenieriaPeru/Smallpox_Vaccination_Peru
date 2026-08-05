@@ -207,10 +207,9 @@ button	{font-family: Giorgia, serif;
 			color: indigo;}
 
 iframe	{width: 70%;
-		height: 490px;
-		padding: 20px; 
-		display: block;
-		border: 0;
+		height: 100vh;
+		padding-bottom: 25px; 
+		border: 1px red solid;
 		overflow-x: visible;
 		}
 
