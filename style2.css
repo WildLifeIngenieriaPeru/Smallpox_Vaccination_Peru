@@ -207,14 +207,18 @@ button	{font-family: Giorgia, serif;
 			color: indigo;}
 
 iframe	{width: 70%;
-		height: 100vh;
-		padding: 20px;
-		overflow-x: visible;
+		height: 490px;
+		padding: 20px; 
 		display: block;
+		border: 0;
 		}
 
 .interactive_map 	{display: block;
 					margin: 0 auto;
+					width: 70%;
+					height: 100vh;
+					padding: 20px;
+					overflow-x: visible;
 					}
 
 
