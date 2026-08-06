@@ -188,9 +188,45 @@
   /* para que en pantallas chicas no se me vaya al diablo todo */
   @media (max-width: 700px) {
     .row { flex-direction: column; }
-    #sidebar { width: 100%; max-height: 40vh; border-left: none; border-bottom: 2px solid #ddd; order: 0; }
-    #map-container { flex: 1; min-height: 60vh; }
+    
+    #sidebar {
+      width: 100%;
+      max-height: 40vh;
+      border-left: none;
+      border-bottom: 2px solid #ddd;
+      order: 0; }
+
+    #map-container {
+      flex: 1;
+      min-height: 60vh; }
+
+    #controls {
+      height: 56px;       /* más baja que en escritorio (80px) */
+      padding: 0 10px;    /* padding the 0 arriba y abajo y de 10 a los lados */
+      gap: 6px;
+      flex-wrap: nowrap; }
+
+    #step-info {
+      font-size: 12px;          /* texto más pequeño */
+      min-width: 0;             /* elimina el mínimo fijo de 220px */
+      flex: 1;                  /* ocupa el espacio disponible */
+      text-align: center;
+      white-space: nowrap;  /* The text continues on the same line until a <br> tag */
+      overflow: hidden;     /* the overflow is clipped, and the rest of the content is hidden */
+      text-overflow: ellipsis; } /* muestra "..." si el título es demasiado largo */
+  
+    button {
+      /*border: 1px red solid; moviendo esta línea ubico más facilmente qué estoy modificando*/
+      padding: 6px 8px;     /* padding the 6 arriba y abajo y de 8 a los lados */
+      font-size: 12px;
+      flex-shrink: 0; }     /* evita que los botones se encojan */
+  
+    .arrow {
+      display: none;
+      }
   }
+
+
  
 </style>
 </head>
@@ -236,9 +272,9 @@
 
 <!-- div vacío donde va ir la barra inferior con los botones (&larr es -> y &rarr es <-) -->
 <div id="controls">
-  <button id="prevBtn">&larr; Previous</button>
+  <button id="prevBtn"><span class="arrow">&larr;</span> Previous</button>
   <div id="step-info">Stop 0</div>
-  <button id="nextBtn">Next &rarr;</button>
+  <button id="nextBtn">Next <span class="arrow">&rarr;</span></button>
 </div>
 
 
