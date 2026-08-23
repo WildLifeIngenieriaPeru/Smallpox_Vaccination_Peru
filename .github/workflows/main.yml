@@ -18,3 +18,10 @@ jobs:
 
       - name: Ejecutar Pagefind
         run: npx pagefind --site .
+      - name: Guardar índice Pagefind en el repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pagefind
+          git commit -m "Actualizar índice Pagefind" || echo "Sin cambios en el índice"
+          git push
