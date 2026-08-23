@@ -1,0 +1,20 @@
+name: Build Pagefind Index
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-pagefind:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Ejecutar Pagefind
+        run: npx pagefind --site .
