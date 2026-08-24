@@ -16,8 +16,31 @@ jobs:
         with:
           node-version: 24
 
+      - name: Marcar páginas que serán indexadas
+        run: |
+          python3 <<'PY'
+          import re
+          from pathlib import Path
+
+          for carpeta in ["Data_AGI", "Data_INS"]:
+              for archivo in Path(carpeta).rglob("*.html"):
+                  texto = archivo.read_text(encoding="utf-8")
+
+                  texto_nuevo = re.sub(
+                      r'<body(\s|>)',
+                      r'<body data-pagefind-body\1',
+                      texto,
+                      count=1,
+                      flags=re.IGNORECASE
+                  )
+
+                  archivo.write_text(texto_nuevo, encoding="utf-8")
+                  print("Indexar:", archivo)
+          PY
+
       - name: Ejecutar Pagefind
         run: npx pagefind --site .
+
       - name: Guardar índice Pagefind en el repositorio
         run: |
           git config user.name "github-actions[bot]"
